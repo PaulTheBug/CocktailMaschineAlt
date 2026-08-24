@@ -450,7 +450,7 @@ bgLayer.addEventListener("click", (event) => {
             console.log(cocktail, "cocktail log")
             console.log(cocktail.liquid_recipe[2].ingredient_name, "test log")
 
-        const orderBtn = popup.querySelector("button[onclick]");
+        const orderBtn = popupdrink.querySelector(".order-btn");
         orderBtn.onclick = () => orderCocktail(cocktail.id);
 
         openPopup("drink");

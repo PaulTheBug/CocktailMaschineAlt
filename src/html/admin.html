@@ -115,7 +115,7 @@
         buttonEl.classList.add("active");
 
         try {
-            const res = await fetch(`http://127.0.0.1:5000/pump/${pumpId}/start`, {
+            const res = await fetch(`http://127.0.0.1:5000/api/pump/${pumpId}/start`, {
                 method: "POST"
             });
 
@@ -152,7 +152,7 @@
         state.stopping = true;
 
         try {
-            const res = await fetch(`http://127.0.0.1:5000/pump/${pumpId}/stop`, {
+            const res = await fetch(`http://127.0.0.1:5000/api/pump/${pumpId}/stop`, {
                 method: "POST"
             });
 
@@ -224,7 +224,7 @@
             const state = getPumpState(pumpId);
             if (state.running || state.starting) {
                 stopPromises.push(
-                    fetch(`http://127.0.0.1:5000/pump/${pumpId}/stop`, {
+                    fetch(`http://127.0.0.1:5000/api/pump/${pumpId}/stop`, {
                         method: "POST"
                     }).catch(err => console.error(`Stop Fehler Pumpe ${pumpId}:`, err))
                 );
