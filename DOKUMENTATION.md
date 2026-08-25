@@ -10,7 +10,7 @@ Projekt verstehen, starten oder erweitern möchten.
 
 Das Projekt ist eine **Cocktailmaschine** und besteht aus zwei Teilen:
 
-- **Backend (Python / Flask):** steuert die 19 Pumpen über GPIO-Pins,
+- **Backend (Python / Flask):** steuert 8 Pumpen über GPIO-Pins,
   verwaltet Rezepte und Zutaten in einer SQLite-Datenbank und stellt eine
   REST-API bereit.
 - **Frontend (HTML / CSS / JavaScript):** Touch-Oberfläche zum Auswählen und
@@ -125,9 +125,9 @@ app.register_blueprint(cocktails_bp, url_prefix='/api')
 
 ### 4.2 `core/pump_controller.py` – Hardware-Steuerung
 
-Steuert die 19 Pumpen über die GPIO-Pins des Raspberry Pi.
+Steuert 8 Pumpen über die GPIO-Pins des Raspberry Pi.
 
-- **`__init__`**: definiert `pump_pins` (Pumpen-Nummer → GPIO-Pin). Versucht
+- **`__init__`**: definiert `pump_pins` für die Pumpen 0 bis 7 (Pumpen-Nummer → GPIO-Pin). Versucht
   `RPi.GPIO` zu laden. Auf einem PC schlägt das fehl (`ImportError` **oder**
   `RuntimeError`, weil kein Pi), und es wird ein **Mock-GPIO** genutzt, das nur
   Text ausgibt statt echte Pins zu schalten.

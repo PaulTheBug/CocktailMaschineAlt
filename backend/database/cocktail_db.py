@@ -2,6 +2,8 @@ import sqlite3
 import os
 
 class CocktailDatabase:
+    PUMP_COUNT = 8
+
     def __init__(self, db_path='database/mixes.db'):
         self.db_path = db_path
         self._check_database_exists()
@@ -73,6 +75,8 @@ class CocktailDatabase:
                 # Check availability
                 if current_level < amount_ml:
                     drink['_makeable'] = False
+                if ing_id > self.PUMP_COUNT:
+                    drink['_makeable'] = False
 
                 drink['liquid_recipe'].append({
                     'pump_id': ing_id - 1,   # pump_id starts at 0
@@ -128,7 +132,7 @@ class CocktailDatabase:
                     'is_liquid': bool(row[2]),
                     'current_level': row[3],
                     'max_level': row[4],
-                    'pump_id': row[0] - 1 if row[2] == 1 else None,
+                    'pump_id': row[0] - 1 if row[2] == 1 and row[0] <= self.PUMP_COUNT else None,
                 }
                 for row in cursor.fetchall()
             ]

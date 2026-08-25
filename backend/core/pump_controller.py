@@ -3,11 +3,9 @@ import threading
 
 class PumpController:
     def __init__(self):
-        # GPIO-Pins für eure 19 Pumpen (0-18)
+        # GPIO-Pins für die 8 Pumpen (0-7)
         self.pump_pins = [
-            4, 14, 15, 18, 17, 27, 22, 24,    # Pumpen 0-7
-            25, 10, 9, 11, 6, 26, 16, 5,      # Pumpen 8-15
-            21, 7, 8                          # Pumpen 16-18 (Limette, Rohrzucker, Minze)
+            4, 14, 15, 18, 17, 27, 22, 24
         ]
         
         try:
