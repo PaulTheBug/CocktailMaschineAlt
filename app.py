@@ -1,6 +1,7 @@
 from flask import Flask, jsonify
 from flask_cors import CORS
-from backend.api.cocktails import cocktails_bp
+from api.cocktails import cocktails_bp
+import os
 
 app = Flask(__name__)
 CORS(app)
@@ -33,4 +34,4 @@ def home():
 
 if __name__ == '__main__':
     print("🚀 Starte Cocktail-Maschine Backend v2.0...")
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', '5000')), debug=True)

@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request, Response
-from backend.database.cocktail_db import CocktailDatabase
-from backend.core.pump_controller import PumpController
+from database.cocktail_db import CocktailDatabase
+from core.pump_controller import PumpController
 import threading
 
 cocktails_bp = Blueprint('cocktails', __name__)
