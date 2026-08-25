@@ -173,38 +173,103 @@ def pump_stop(pump_id):
 # ─────────────────────────────────────────────────────────────────────────────
 # PIN management
 # ─────────────────────────────────────────────────────────────────────────────
+import os
+import sqlite3
+import hashlib
+from flask import request, jsonify
 
-import json, os
-
-ALCOHOL_PIN_FILE = "data/pin.json"
-ADMIN_PIN = "9999"
-
-
-def load_alcohol_pin():
-    if os.path.exists(ALCOHOL_PIN_FILE):
-        try:
-            with open(ALCOHOL_PIN_FILE) as f:
-                p = str(json.load(f).get("alcohol_pin", "1234"))
-                if p.isdigit() and len(p) == 4:
-                    return p
-        except Exception:
-            pass
-    return "1234"
+DB_FILE = "data/security.db"
 
 
-def save_alcohol_pin(pin):
-    os.makedirs(os.path.dirname(ALCOHOL_PIN_FILE), exist_ok=True)
-    with open(ALCOHOL_PIN_FILE, "w") as f:
-        json.dump({"alcohol_pin": pin}, f)
+def hash_pin(pin):
+    return hashlib.sha256(pin.encode()).hexdigest()
 
 
-CURRENT_ALCOHOL_PIN = load_alcohol_pin()
+def init_db():
+    os.makedirs(os.path.dirname(DB_FILE), exist_ok=True)
+
+    conn = sqlite3.connect(DB_FILE)
+    cur = conn.cursor()
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        )
+    """)
+
+    defaults = {
+        "alcohol_pin": hash_pin("1234"),
+        "admin_pin": hash_pin("9999")
+    }
+
+    for key, value in defaults.items():
+        cur.execute(
+            "SELECT value FROM settings WHERE key=?",
+            (key,)
+        )
+
+        if cur.fetchone() is None:
+            cur.execute(
+                "INSERT INTO settings (key, value) VALUES (?, ?)",
+                (key, value)
+            )
+
+    conn.commit()
+    conn.close()
+
+
+def get_setting(key):
+    conn = sqlite3.connect(DB_FILE)
+    cur = conn.cursor()
+
+    cur.execute(
+        "SELECT value FROM settings WHERE key=?",
+        (key,)
+    )
+
+    row = cur.fetchone()
+    conn.close()
+
+    return row[0] if row else None
+
+
+def set_setting(key, value):
+    conn = sqlite3.connect(DB_FILE)
+    cur = conn.cursor()
+
+    cur.execute("""
+        INSERT OR REPLACE INTO settings (key, value)
+        VALUES (?, ?)
+    """, (key, value))
+
+    conn.commit()
+    conn.close()
+
+
+# Initialize database when application starts
+init_db()
 
 
 @cocktails_bp.route('/check-pin', methods=['POST'])
 def check_pin():
-    """POST JSON: {"pin": "1234", "purpose": "alcohol"|"admin"}"""
+    """
+    POST JSON:
+    {
+        "pin": "1234",
+        "purpose": "alcohol"
+    }
+
+    or
+
+    {
+        "pin": "9999",
+        "purpose": "admin"
+    }
+    """
+
     data = request.get_json()
+
     if not data or 'pin' not in data:
         return jsonify({'error': 'PIN erforderlich'}), 400
 
@@ -214,28 +279,91 @@ def check_pin():
     if not pin.isdigit() or len(pin) != 4:
         return jsonify({'error': 'PIN muss 4 Ziffern sein'}), 400
 
-    is_valid = (pin == ADMIN_PIN) if purpose == 'admin' else (pin == CURRENT_ALCOHOL_PIN)
-    return jsonify({'valid': is_valid, 'message': 'PIN korrekt' if is_valid else 'PIN falsch'})
+    key = "admin_pin" if purpose == "admin" else "alcohol_pin"
+
+    stored_hash = get_setting(key)
+
+    is_valid = (
+        stored_hash is not None and
+        hash_pin(pin) == stored_hash
+    )
+
+    return jsonify({
+        'valid': is_valid,
+        'message': 'PIN korrekt' if is_valid else 'PIN falsch'
+    })
 
 
 @cocktails_bp.route('/change-pin', methods=['POST'])
 def change_pin():
-    """POST JSON: {"old_pin": "1234", "new_pin": "5678"}"""
-    global CURRENT_ALCOHOL_PIN
+    """
+    Change alcohol PIN
+
+    POST JSON:
+    {
+        "old_pin": "1234",
+        "new_pin": "5678"
+    }
+    """
 
     data = request.get_json()
-    if not data or 'old_pin' not in data or 'new_pin' not in data:
-        return jsonify({'error': 'old_pin und new_pin erforderlich'}), 400
 
-    old_pin, new_pin = str(data['old_pin']), str(data['new_pin'])
+    if not data:
+        return jsonify({'error': 'Daten fehlen'}), 400
+
+    old_pin = str(data.get('old_pin', ''))
+    new_pin = str(data.get('new_pin', ''))
 
     if not old_pin.isdigit() or len(old_pin) != 4:
         return jsonify({'error': 'Alte PIN muss 4 Ziffern sein'}), 400
+
     if not new_pin.isdigit() or len(new_pin) != 4:
         return jsonify({'error': 'Neue PIN muss 4 Ziffern sein'}), 400
-    if old_pin != CURRENT_ALCOHOL_PIN:
-        return jsonify({'success': False, 'message': 'Alte PIN falsch'}), 401
 
-    CURRENT_ALCOHOL_PIN = new_pin
-    save_alcohol_pin(new_pin)
-    return jsonify({'success': True, 'message': 'PIN erfolgreich geändert'})
+    stored_hash = get_setting("alcohol_pin")
+
+    if hash_pin(old_pin) != stored_hash:
+        return jsonify({
+            'success': False,
+            'message': 'Alte PIN falsch'
+        }), 401
+
+    set_setting("alcohol_pin", hash_pin(new_pin))
+
+    return jsonify({
+        'success': True,
+        'message': 'PIN erfolgreich geändert'
+    })
+
+
+@cocktails_bp.route('/change-admin-pin', methods=['POST'])
+def change_admin_pin():
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({'error': 'Daten fehlen'}), 400
+
+    old_pin = str(data.get('old_pin', ''))
+    new_pin = str(data.get('new_pin', ''))
+
+    if not old_pin.isdigit() or len(old_pin) != 4:
+        return jsonify({'error': 'Alte Admin-PIN muss 4 Ziffern sein'}), 400
+
+    if not new_pin.isdigit() or len(new_pin) != 4:
+        return jsonify({'error': 'Neue Admin-PIN muss 4 Ziffern sein'}), 400
+
+    stored_hash = get_setting("admin_pin")
+
+    if hash_pin(old_pin) != stored_hash:
+        return jsonify({
+            'success': False,
+            'message': 'Alte Admin-PIN falsch'
+        }), 401
+
+    set_setting("admin_pin", hash_pin(new_pin))
+
+    return jsonify({
+        'success': True,
+        'message': 'Admin-PIN erfolgreich geändert'
+    })
