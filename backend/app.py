@@ -1,6 +1,6 @@
 from flask import Flask, jsonify
 from flask_cors import CORS
-from api.cocktails import cocktails_bp
+from backend.api.cocktails import cocktails_bp
 
 app = Flask(__name__)
 CORS(app)
