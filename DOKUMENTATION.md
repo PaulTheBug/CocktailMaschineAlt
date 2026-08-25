@@ -58,10 +58,12 @@ Cocktailmixer_LF12a/
 ## 3. Installation & Start
 
 ### Voraussetzungen
+
 - Python 3 mit einem virtuellen Environment (`.venv/` im Projekt-Root)
 - Auf dem Raspberry Pi zusätzlich `RPi.GPIO` (nur dort installierbar)
 
 ### Abhängigkeiten installieren
+
 ```bash
 cd /run/media/hepa/rootfs/home/schule/Desktop/Cocktailmixer_LF12a
 source .venv/bin/activate
@@ -74,27 +76,33 @@ pip install -r py/scripts/backend/requirements.txt
 > (siehe Abschnitt 4.2).
 
 ### Backend starten
+
 ```bash
 cd py/scripts/backend
 python app.py
 ```
+
 Der Server läuft danach auf `http://localhost:5000` (bzw. `http://0.0.0.0:5000`).
 
 Ohne aktiviertes venv geht es auch direkt:
+
 ```bash
 /run/media/hepa/rootfs/home/schule/Desktop/Cocktailmixer_LF12a/.venv/bin/python \
     py/scripts/backend/app.py
 ```
 
 ### Weboberfläche öffnen
+
 Das Frontend wird **nicht** von Flask ausgeliefert – es sind eigenständige
 HTML-Dateien, die die API aufrufen. Am zuverlässigsten über einen kleinen
 Webserver:
+
 ```bash
 cd src
 python3 -m http.server 8080
 # Browser: http://localhost:8080/html/index.html
 ```
+
 Die Datei `api_examples.html` im Root ist nur eine Endpunkt-Übersicht zum Testen.
 
 ---
@@ -102,11 +110,13 @@ Die Datei `api_examples.html` im Root ist nur eine Endpunkt-Übersicht zum Teste
 ## 4. Backend im Detail
 
 ### 4.1 `app.py` – Einstiegspunkt
+
 ```python
 app = Flask(__name__)
 CORS(app)
 app.register_blueprint(cocktails_bp, url_prefix='/api')
 ```
+
 - Erstellt die Flask-App.
 - `CORS(app)` erlaubt, dass das Frontend (andere Herkunft) die API aufrufen darf.
 - Registriert alle API-Routen aus `cocktails.py` unter dem Präfix `/api`.
@@ -114,6 +124,7 @@ app.register_blueprint(cocktails_bp, url_prefix='/api')
 - `app.run(host='0.0.0.0', port=5000, debug=True)` startet den Server.
 
 ### 4.2 `core/pump_controller.py` – Hardware-Steuerung
+
 Steuert die 19 Pumpen über die GPIO-Pins des Raspberry Pi.
 
 - **`__init__`**: definiert `pump_pins` (Pumpen-Nummer → GPIO-Pin). Versucht
@@ -132,14 +143,29 @@ Steuert die 19 Pumpen über die GPIO-Pins des Raspberry Pi.
 - **`cleanup`**: gibt die GPIO-Ressourcen frei.
 
 ### 4.3 `database/cocktail_db.py` – Datenbankzugriff
+
 Kapselt alle SQLite-Zugriffe auf `database/mixes.db`.
 
-Schema (drei Tabellen):
+Schema (drei Tabellen plus Bildspalte):
+
 - `drinks` – Getränke (Name, Alkohol-Flag, Beschreibung)
 - `ingredients` – Zutaten (flüssig/manuell, aktueller Füllstand, Maximum)
 - `recipies` – Verknüpfung Getränk ↔ Zutat mit Menge
+- `drinks.image_data` – PNG-BLOB des jeweiligen Getränks
+
+Bildtabelle anlegen und Bilder aus `src/images/` importieren:
+
+```bash
+cd py/scripts/backend
+python database/migrate_drink_images.py
+```
+
+Die Migration legt `drinks.image_data` an, importiert die PNGs und entfernt eine
+eventuell vorhandene alte `drink_images`-Tabelle. Die Bilder sind danach über
+`/api/cocktails/<drink_id>/image` abrufbar.
 
 Wichtige Methoden:
+
 - **`get_available_cocktails`**: großer `JOIN` über alle drei Tabellen.
   Gruppiert die Zeilen pro Getränk und baut ein verschachteltes Objekt mit
   `liquid_recipe` (per Pumpe dosierbar) und `manual_ingredients` (z. B. Limette,
@@ -156,6 +182,7 @@ Wichtige Methoden:
 - **`_get_manual_instruction`**: erzeugt Textanweisungen für manuelle Zutaten.
 
 ### 4.4 `api/cocktails.py` – die REST-API (Blueprint)
+
 Erstellt die gemeinsame `db`- und `pump_controller`-Instanz und definiert die
 Endpunkte (Basis-Präfix `/api`).
 
@@ -202,6 +229,7 @@ Endpunkte (Basis-Präfix `/api`).
 ## 5. Frontend im Detail
 
 ### 5.1 `src/html/index.html` – Bedienoberfläche
+
 - Navbar mit zwei Kategorien („Alkoholfreie" / „Alkoholische Getränke") und
   Admin-Buttons (Zahnrad).
 - `#cocktailList`: hier werden die Getränke-Buttons dynamisch eingefügt.
@@ -213,6 +241,7 @@ Endpunkte (Basis-Präfix `/api`).
 - Bindet `scripts.js` und `alerts.js` ein.
 
 ### 5.2 `src/js/scripts.js` – die Logik
+
 - **`getData()`**: lädt beim Start die Zutaten (Test-Aufruf).
 - **`orderCocktail(id)`**: sperrt die UI (`setBusy`), sendet `POST /api/order`,
   zeigt eine ~17s-Fortschrittsanimation (`runBusyProgress` mit
@@ -228,10 +257,12 @@ Endpunkte (Basis-Präfix `/api`).
   Zutatenliste eines Cocktails nach.
 
 ### 5.3 `src/js/alerts.js`
+
 Kleines Benachrichtigungssystem (`notify(...)`), das über das
 `<template id="alertTemplate">` Meldungen (Erfolg/Fehler) einblendet.
 
 ### 5.4 `src/html/admin.html`
+
 Admin-Oberfläche zum Testen der Pumpen (`/pump/<id>/start|stop`), Zutaten
 setzen/auffüllen (`/ingredients/...`) und PIN ändern (`/change-pin`).
 
@@ -267,7 +298,7 @@ sequenceDiagram
 
 ## 7. Standard-Zugangsdaten
 
-| Zweck | PIN | Quelle |
-|---|---|---|
-| Alkohol freischalten | `1234` (änderbar) | `data/pin.json` |
-| Admin-Bereich | `9999` (fest) | Konstante in `cocktails.py` |
+| Zweck                | PIN               | Quelle                      |
+| -------------------- | ----------------- | --------------------------- |
+| Alkohol freischalten | `1234` (änderbar) | `data/pin.json`             |
+| Admin-Bereich        | `9999` (fest)     | Konstante in `cocktails.py` |

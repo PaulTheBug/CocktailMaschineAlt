@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, Response
 from database.cocktail_db import CocktailDatabase
 from core.pump_controller import PumpController
 import threading
@@ -54,6 +54,15 @@ def order_cocktail():
         response['instructions'] = [s['instruction'] for s in cocktail['manual_ingredients']]
 
     return jsonify(response)
+
+
+@cocktails_bp.route('/cocktails/<int:cocktail_id>/image', methods=['GET'])
+def get_cocktail_image(cocktail_id):
+    image = db.get_drink_image(cocktail_id)
+    if image is None or image[0] is None:
+        return jsonify({'error': 'Bild nicht gefunden'}), 404
+
+    return Response(image[0], mimetype='image/png')
 
 
 @cocktails_bp.route('/status', methods=['GET'])

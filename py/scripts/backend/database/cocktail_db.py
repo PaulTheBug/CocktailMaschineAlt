@@ -13,6 +13,14 @@ class CocktailDatabase:
     def _get_conn(self):
         return sqlite3.connect(self.db_path)
 
+    def get_drink_image(self, drink_id):
+        """Gibt die Bilddaten eines Drinks zurück."""
+        with self._get_conn() as conn:
+            return conn.execute(
+                'SELECT image_data FROM drinks WHERE ID = ?',
+                (drink_id,)
+            ).fetchone()
+
     # -------------------------------------------------------------------------
     # Cocktails
     # -------------------------------------------------------------------------
@@ -22,7 +30,7 @@ class CocktailDatabase:
         with self._get_conn() as conn:
             params = []
             query = '''
-                SELECT d.ID, d.Getränk, d.Alkohol, d.Beschreibung,
+                SELECT d.ID, d.Getränk, d.Alkohol, d.Beschreibung, d.image_data,
                        i.ingredientID, i.ingredient, i.isLiquid,
                        r.level AS amount_ml,
                        i.currentLevel
@@ -42,13 +50,13 @@ class CocktailDatabase:
         drinks_map = {}
         for row in rows:
             drink_id, name, alkohol_flag, description, \
-                ing_id, ing_name, is_liquid, amount_ml, current_level = row
+                image_data, ing_id, ing_name, is_liquid, amount_ml, current_level = row
 
             if drink_id not in drinks_map:
                 drinks_map[drink_id] = {
                     'id': drink_id,
                     'name': name,
-                    'image_path': '../images/' + name + '.png',
+                    'image_path': f'http://127.0.0.1:5000/api/cocktails/{drink_id}/image',
                     'alkoholisch': bool(alkohol_flag),
                     'description': description,
                     'glass_size_ml': 350,
