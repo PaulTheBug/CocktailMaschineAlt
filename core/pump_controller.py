@@ -61,10 +61,14 @@ class PumpController:
         
         threads = []
         for ingredient in recipe:
-            pump_id = ingredient['pump_id']
+            pump_id = ingredient.get('pump_id')
             amount = ingredient['amount_ml']
             ingredient_name = ingredient['ingredient_name']
-            
+
+            if pump_id is None or ingredient.get('is_virtual'):
+                print(f"  → {ingredient_name}: {amount}ml (extern / virtuell, keine reale Pumpe)")
+                continue
+
             print(f"  → {ingredient_name}: {amount}ml")
             t = threading.Thread(target=self.run_pump, args=(pump_id, amount))
             threads.append(t)

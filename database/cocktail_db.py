@@ -72,18 +72,20 @@ class CocktailDatabase:
             drink = drinks_map[drink_id]
 
             if is_liquid:
-                # Check availability
+                # Check availability for real pourable ingredients; ingredients beyond
+                # the 8 physical pumps are treated as virtual/external additions.
                 if current_level < amount_ml:
                     drink['_makeable'] = False
-                if ing_id > self.PUMP_COUNT:
-                    drink['_makeable'] = False
+
+                is_virtual = ing_id > self.PUMP_COUNT
 
                 drink['liquid_recipe'].append({
-                    'pump_id': ing_id - 1,   # pump_id starts at 0
+                    'pump_id': ing_id - 1 if not is_virtual else None,
                     'ingredient_id': ing_id,
                     'ingredient_name': ing_name,
                     'amount_ml': amount_ml,
                     'is_liquid': True,
+                    'is_virtual': is_virtual,
                 })
             else:
                 drink['manual_ingredients'].append({
@@ -91,6 +93,8 @@ class CocktailDatabase:
                     'ingredient_name': ing_name,
                     'amount_ml': amount_ml,
                     'is_liquid': False,
+                    'is_virtual': True,
+                    'pump_id': None,
                     'instruction': self._get_manual_instruction(ing_name, amount_ml),
                 })
                 drink['requires_manual_steps'] = True
@@ -132,7 +136,8 @@ class CocktailDatabase:
                     'is_liquid': bool(row[2]),
                     'current_level': row[3],
                     'max_level': row[4],
-                    'pump_id': row[0] - 1 if row[2] == 1 and row[0] <= self.PUMP_COUNT else None,
+                    'is_virtual': (not bool(row[2])) or (row[0] > self.PUMP_COUNT),
+                    'pump_id': row[0] - 1 if bool(row[2]) and row[0] <= self.PUMP_COUNT else None,
                 }
                 for row in cursor.fetchall()
             ]
